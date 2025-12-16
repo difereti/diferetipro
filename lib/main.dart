@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme.dart';
 import 'nav.dart';
 
 /// Main entry point for the application
-///
-/// This sets up:
-/// - Provider state management (ThemeProvider, CounterProvider)
-/// - go_router navigation
-/// - Material 3 theming with light/dark modes
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: 'https://iytpyokmahkumobgagtg.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5dHB5b2ttYWhrdW1vYmdhZ3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4Mzk2NDMsImV4cCI6MjA4MTQxNTY0M30.TULOoEmUrJxuLP58K9_UaSp7EYpEmdsp_tFvjNCWYCw',
+  );
+
   // Initialize the app
   runApp(const MyApp());
 }
@@ -19,20 +22,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // MultiProvider wraps the app to provide state to all widgets
-    // As you extend the app, use MultiProvider to wrap the app
-    // and provide state to all widgets
-    // Example:
-    // return MultiProvider(
-    //   providers: [
-    //     ChangeNotifierProvider(create: (_) => ExampleProvider()),
-    //   ],
-    //   child: MaterialApp.router(
-    //     title: 'Dreamflow Starter',
-    //     debugShowCheckedModeBanner: false,
-    //     routerConfig: AppRouter.router,
-    //   ),
-    // );
     return MaterialApp.router(
       title: 'Difereti App',
       debugShowCheckedModeBanner: false,

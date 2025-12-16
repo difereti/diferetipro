@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme.dart';
+import 'package:difereti/data/supabase_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -31,13 +32,47 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isLoading = true);
 
-    // Simulate network delay for demo
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Create user in Supabase
+      await SupabaseService.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        data: {
+          'full_name': _nameController.text.trim(),
+          'id_type': _selectedIdType,
+          'id_number': _idNumberController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'role': 'client', // Default role
+        },
+      );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      // Default to 'cliente' role for now as requested
-      context.go('/dashboard?role=cliente');
+      if (mounted) {
+        // Show success message or auto login
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cuenta creada exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Navigate to dashboard or login
+        // Since signUp might auto-login in Supabase depending on config,
+        // we can check currentUser or just go to dashboard
+        context.go('/dashboard?role=client');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al registrarse: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
