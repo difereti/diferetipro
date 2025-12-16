@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 import '../../theme.dart';
 import '../../data/mock_data.dart';
 import '../../nav.dart';
@@ -8,6 +9,7 @@ import 'services_page.dart';
 import 'emergency_page.dart';
 import 'inbox_page.dart';
 import 'technician_page.dart';
+import '../../services/supabase_service.dart';
 
 class DashboardPage extends StatefulWidget {
   final String role;
@@ -174,23 +176,39 @@ class UserProfileDialog extends StatefulWidget {
 class _UserProfileDialogState extends State<UserProfileDialog> {
   late TextEditingController _nameController;
   late TextEditingController _aliasController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  
   bool _isEditing = false;
   String _profileImage = 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=200';
+  String _phoneCode = '+57';
   
-  // Use mock data
-  final user = MockData.currentUser;
+  final user = SupabaseService.currentUser;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: user.name);
-    _aliasController = TextEditingController(text: user.djAlias ?? '');
+    final metadata = user?.userMetadata ?? {};
+    
+    _nameController = TextEditingController(text: metadata['full_name'] ?? '');
+    _aliasController = TextEditingController(text: metadata['dj_alias'] ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    
+    String phone = metadata['phone'] ?? '';
+    // Attempt to extract country code if it matches common ones or starts with +
+    if (phone.startsWith('+57')) {
+       _phoneCode = '+57';
+       if (phone.length > 3) phone = phone.substring(3).trim();
+    }
+    _phoneController = TextEditingController(text: phone);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _aliasController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -200,16 +218,38 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
     });
   }
 
-  void _saveChanges() {
-    // In a real app, update the backend/provider here
-    setState(() {
-      // For now just toggle back, assuming "saved"
-      _isEditing = false;
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Perfil actualizado')),
-    );
+  Future<void> _saveChanges() async {
+    try {
+      final updates = <String, dynamic>{
+        'full_name': _nameController.text.trim(),
+        'dj_alias': _aliasController.text.trim(),
+        'phone': '$_phoneCode${_phoneController.text.trim()}',
+      };
+
+      // Update metadata
+      await SupabaseService.updateUser(data: updates);
+      
+      // Update email if changed
+      if (_emailController.text.trim() != user?.email) {
+        await SupabaseService.updateUser(email: _emailController.text.trim());
+      }
+
+      setState(() {
+        _isEditing = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Perfil actualizado')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   void _changeProfilePhoto() {
@@ -227,14 +267,10 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
               leading: const Icon(Icons.camera_alt, color: BrandColors.primary),
               title: const Text('Tomar foto', style: TextStyle(color: Colors.white)),
               onTap: () {
-                // Mock action
                 Navigator.pop(context);
                 setState(() {
                   _profileImage = 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=200';
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Foto actualizada (Simulado)')),
-                );
               },
             ),
             ListTile(
@@ -245,25 +281,8 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                 setState(() {
                   _profileImage = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200';
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Foto actualizada (Simulado)')),
-                );
               },
             ),
-            if (_profileImage.isNotEmpty)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.redAccent),
-                title: const Text('Eliminar foto', style: TextStyle(color: Colors.redAccent)),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _profileImage = ''; // Or set to a placeholder
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Foto eliminada')),
-                  );
-                },
-              ),
           ],
         ),
       ),
@@ -272,9 +291,19 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (user == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final metadata = user!.userMetadata ?? {};
+    final idType = metadata['id_type'] ?? 'ID';
+    final idNumber = metadata['id_number'] ?? 'N/A';
+    final role = metadata['role'] ?? 'client';
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: const Color(0xFF1E1E1E),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -299,6 +328,7 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                           : null,
                     ),
                   ),
+                  if (_isEditing)
                   Positioned(
                     bottom: 0,
                     right: 0,
@@ -318,14 +348,16 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
               ),
               const SizedBox(height: 16),
               
-              // Name & Alias Section
+              // Name & Alias Section (Centered)
               if (_isEditing) ...[
                 TextField(
                   controller: _nameController,
-                  style: const TextStyle(color: Colors.white),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                   decoration: const InputDecoration(
                     labelText: 'Nombre Completo',
                     labelStyle: TextStyle(color: Colors.grey),
+                    alignLabelWithHint: true,
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
                   ),
@@ -333,118 +365,189 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _aliasController,
-                  style: const TextStyle(color: Colors.white),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: BrandColors.primary, fontSize: 16),
                   decoration: const InputDecoration(
                     labelText: 'DJ Alias / A.K.A',
                     labelStyle: TextStyle(color: Colors.grey),
+                    alignLabelWithHint: true,
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _toggleEdit,
-                      child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-                    ),
-                    ElevatedButton(
-                      onPressed: _saveChanges,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: BrandColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Guardar'),
-                    ),
-                  ],
-                ),
               ] else ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Column(
-                        children: [
-                          Text(
-                            _nameController.text, // Use controller text to reflect changes immediately
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (_aliasController.text.isNotEmpty)
-                            Text(
-                              _aliasController.text,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: BrandColors.primary.withValues(alpha: 0.8),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
-                      onPressed: _toggleEdit,
-                      tooltip: 'Editar nombre',
-                    ),
-                  ],
-                ),
-              ],
-
-              const SizedBox(height: 8),
-              
-              // Role Badge
-              Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                 decoration: BoxDecoration(
-                   color: BrandColors.primary.withValues(alpha: 0.2),
-                   borderRadius: BorderRadius.circular(20),
-                 ),
-                 child: Text(
-                   user.role.name.toUpperCase(),
-                   style: const TextStyle(
-                     color: BrandColors.primary,
-                     fontSize: 10,
-                     fontWeight: FontWeight.bold,
-                   ),
-                 ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Info items (Read Only)
-              _buildInfoRow(Icons.email_outlined, user.email),
-              _buildInfoRow(Icons.phone_outlined, user.phoneNumber),
-              // ID is strictly read-only as requested
-              _buildInfoRow(Icons.badge_outlined, '${user.idType ?? "CC"} ${user.idNumber ?? "N/A"}'),
-              
-              const SizedBox(height: 32),
-              
-              // Logout Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    context.pop(); // Close dialog
-                    context.go(AppRoutes.login); // Logout action using AppRoutes
-                  },
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Cerrar Sesión'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2A2A2A),
-                    foregroundColor: Colors.redAccent,
-                    elevation: 0,
-                    side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.2)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                Text(
+                  _nameController.text,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
+                if (_aliasController.text.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _aliasController.text,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: BrandColors.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                
+                // Role Badge
+                Container(
+                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                   decoration: BoxDecoration(
+                     color: BrandColors.primary.withValues(alpha: 0.2),
+                     borderRadius: BorderRadius.circular(20),
+                   ),
+                   child: Text(
+                     role.toString().toUpperCase(),
+                     style: const TextStyle(
+                       color: BrandColors.primary,
+                       fontSize: 10,
+                       fontWeight: FontWeight.bold,
+                     ),
+                   ),
+                ),
+                const SizedBox(height: 8),
+                
+                // Edit Button
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
+                  onPressed: _toggleEdit,
+                  tooltip: 'Editar perfil',
+                ),
+              ],
+              
+              const SizedBox(height: 24),
+              
+              // 1. ID Document (Read-Only)
+              _buildReadOnlyRow(Icons.badge_outlined, '$idType $idNumber', 'Documento de Identidad'),
+              
+              const SizedBox(height: 16),
+              
+              // 2. Phone (Editable)
+              if (_isEditing) ...[
+                 Row(
+                   children: [
+                     Container(
+                       decoration: BoxDecoration(
+                         border: Border(bottom: BorderSide(color: Colors.grey[700]!)),
+                       ),
+                       child: CountryCodePicker(
+                         onChanged: (code) => _phoneCode = code.dialCode ?? '+57',
+                         initialSelection: 'CO',
+                         favorite: const ['+57', 'CO'],
+                         showCountryOnly: false,
+                         showOnlyCountryWhenClosed: false,
+                         alignLeft: false,
+                         textStyle: const TextStyle(color: Colors.white),
+                         dialogTextStyle: const TextStyle(color: Colors.black),
+                         searchDecoration: const InputDecoration(
+                           prefixIcon: Icon(Icons.search),
+                           hintText: 'Buscar país',
+                         ),
+                       ),
+                     ),
+                     const SizedBox(width: 8),
+                     Expanded(
+                       child: TextField(
+                         controller: _phoneController,
+                         keyboardType: TextInputType.phone,
+                         style: const TextStyle(color: Colors.white),
+                         decoration: const InputDecoration(
+                           labelText: 'Celular',
+                           labelStyle: TextStyle(color: Colors.grey),
+                           enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                           focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                         ),
+                       ),
+                     ),
+                   ],
+                 ),
+              ] else ...[
+                 _buildReadOnlyRow(Icons.phone_outlined, '$_phoneCode ${_phoneController.text}', 'Celular'),
+              ],
+              
+              const SizedBox(height: 16),
+
+              // 3. Email (Editable)
+              if (_isEditing)
+                TextField(
+                   controller: _emailController,
+                   keyboardType: TextInputType.emailAddress,
+                   style: const TextStyle(color: Colors.white),
+                   decoration: const InputDecoration(
+                     labelText: 'Correo Electrónico',
+                     labelStyle: TextStyle(color: Colors.grey),
+                     prefixIcon: Icon(Icons.email_outlined, color: Colors.grey),
+                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                   ),
+                )
+              else
+                _buildReadOnlyRow(Icons.email_outlined, _emailController.text, 'Correo Electrónico'),
+
+              const SizedBox(height: 32),
+              
+              // Action Buttons
+              if (_isEditing)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _toggleEdit,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.grey),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _saveChanges,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BrandColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Guardar'),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                // Logout Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await SupabaseService.signOut();
+                      if (context.mounted) {
+                        context.pop(); // Close dialog
+                        context.go(AppRoutes.login); // Logout action
+                      }
+                    },
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Cerrar Sesión'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2A2A2A),
+                      foregroundColor: Colors.redAccent,
+                      elevation: 0,
+                      side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.2)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -452,30 +555,42 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+  Widget _buildReadOnlyRow(IconData icon, String text, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: Colors.grey, size: 20),
-          ),
-          const SizedBox(width: 16),
+          Icon(icon, color: Colors.grey, size: 20),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 10,
+                  ),
+                ),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500
+                  ),
+                ),
+              ],
             ),
           ),
+          if (label == 'Documento de Identidad')
+             const Icon(Icons.lock_outline, color: Colors.grey, size: 16), 
         ],
       ),
     );

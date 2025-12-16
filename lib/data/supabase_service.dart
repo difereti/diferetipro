@@ -34,4 +34,14 @@ class SupabaseService {
 
   // Get Current User
   static User? get currentUser => client.auth.currentUser;
+
+  // Update User
+  static Future<UserResponse> updateUser({String? email, Map<String, dynamic>? data}) async {
+    return await client.auth.updateUser(
+      UserAttributes(
+        email: email,
+        data: data,
+      ),
+    );
+  }
 }

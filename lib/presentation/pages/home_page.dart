@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 import '../../data/mock_data.dart';
 import '../../models/data_models.dart';
 import '../../theme.dart';
+import '../../services/supabase_service.dart';
 
 class ClientHomePage extends StatelessWidget {
   const ClientHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final user = SupabaseService.currentUser;
+    final name = user?.userMetadata?['full_name'] ?? 'Usuario';
+    // Use first name for greeting if no DJ alias
+    final firstName = name.split(' ').first;
+    final djAlias = user?.userMetadata?['dj_alias'];
+    final displayName = (djAlias != null && djAlias.isNotEmpty) ? djAlias : firstName;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Center(
@@ -17,9 +25,9 @@ class ClientHomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
           // Welcome Header
-          const Text(
-            'Hola, DJ JP 👋',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            'Hola, $displayName 👋',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
 
