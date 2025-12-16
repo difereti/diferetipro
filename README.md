@@ -1,2 +1,0 @@
-# diferetipro
-App for difereti

@@ -1,0 +1,35 @@
+name: difereti
+description: "Una aplicación moderna y vibrante para Difereti, tu solución integral en audio profesional, que unifica la comunicación, optimiza el alquiler de equipos de alta gama y centraliza la gestión de servicios técnicos especializados, todo con la energía y estilo de Cali"
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  supabase_flutter: '>=1.10.0'
+  intl: 0.20.2
+  font_awesome_flutter: ^10.0.0
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.1.0
+  provider: ^6.1.2
+  go_router: ^16.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icons/dreamflow_icon.jpg
+  remove_alpha_ios: true
