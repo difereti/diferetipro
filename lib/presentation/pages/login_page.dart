@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../theme.dart';
 import 'package:difereti/data/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,11 +23,22 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    _listenAuthChanges();
+    // If already logged in (e.g., returned from OAuth), route to dashboard
+    final user = SupabaseService.currentUser;
+    if (user != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final role = user.userMetadata?['role'] ?? 'client';
+        context.go('/dashboard?role=$role');
+      });
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -42,6 +55,20 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       debugPrint('Error loading credentials: $e');
+    }
+  }
+
+  void _listenAuthChanges() {
+    try {
+      _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        final session = data.session;
+        if (session != null && mounted) {
+          final role = session.user.userMetadata?['role'] ?? 'client';
+          context.go('/dashboard?role=$role');
+        }
+      });
+    } catch (e) {
+      debugPrint('Auth listener error: $e');
     }
   }
 
@@ -101,6 +128,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _authSub?.cancel();
     super.dispose();
   }
 
@@ -332,7 +360,68 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading
+                              ? null
+                              : () async {
+                                  setState(() => _isLoading = true);
+                                  try {
+                                    await SupabaseService.signInWithGoogle();
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          e
+                                              .toString()
+                                              .replaceAll('Exception: ', ''),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  } finally {
+                                    if (mounted) setState(() => _isLoading = false);
+                                  }
+                                },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[700]!
+                                  : Colors.grey[300]!,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.black
+                                    : Colors.white,
+                            foregroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
+                          ),
+                          icon: Icon(
+                            Icons.g_mobiledata, // Minimalist G icon
+                            size: 28,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                          label: Text(
+                            'Continuar con Google',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Center(
                         child: Text(
                           '¿No tienes cuenta?',
