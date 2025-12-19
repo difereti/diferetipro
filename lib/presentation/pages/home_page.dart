@@ -87,67 +87,83 @@ class _EquipmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 180,
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Image.network(
-              equipment.thumbnail,
-              fit: BoxFit.cover,
-              width: double.infinity,
+    return GestureDetector(
+      onTap: () async {
+        try {
+          await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            builder: (_) => EquipmentDetailsSheet(equipment: equipment),
+          );
+        } catch (e) {
+          debugPrint('Failed to open equipment details: $e');
+        }
+      },
+      child: Container(
+        width: 180,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Image.network(
+                equipment.thumbnail,
+                fit: BoxFit.cover,
+                width: double.infinity,
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  equipment.brand,
-                  style: TextStyle(
-                    color: BrandColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  equipment.model,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _StatusBadge(status: equipment.status),
-                    const Spacer(),
-                    Text(
-                      'ID: ${equipment.id}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.7),
-                      ),
-                      overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    equipment.brand,
+                    style: TextStyle(
+                      color: BrandColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    equipment.model,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _StatusBadge(status: equipment.status),
+                      const Spacer(),
+                      Text(
+                        'ID: ${equipment.id}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.7),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -194,6 +210,213 @@ class _StatusBadge extends StatelessWidget {
             TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
+  }
+}
+
+/// Bottom sheet showing equipment details with image, brand, model, category,
+/// unique ID, and the current workshop phase.
+class EquipmentDetailsSheet extends StatelessWidget {
+  final Equipment equipment;
+
+  const EquipmentDetailsSheet({super.key, required this.equipment});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final on = cs.onSurface;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, controller) => SingleChildScrollView(
+            controller: controller,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 46,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: on.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image.network(
+                        equipment.mainImage ?? equipment.thumbnail,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          equipment.brand,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          equipment.model,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: on.withValues(alpha: 0.85)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _Chip(
+                        icon: Icons.category_rounded,
+                        label: equipment.category.isNotEmpty
+                            ? equipment.category
+                            : 'Sin categoría',
+                        bg: cs.primary.withValues(alpha: 0.12),
+                        fg: cs.primary,
+                      ),
+                      _Chip(
+                        icon: Icons.tag_rounded,
+                        label: 'ID: ${equipment.id}',
+                        bg: on.withValues(alpha: 0.08),
+                        fg: on.withValues(alpha: 0.9),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Estado en taller',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  _PhaseTile(phase: equipment.phase),
+                  const SizedBox(height: 16),
+                  if (equipment.details.isNotEmpty) ...[
+                    Text('Detalles',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text(
+                      equipment.details,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: on.withValues(alpha: 0.85)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color bg;
+  final Color fg;
+  const _Chip({required this.icon, required this.label, required this.bg, required this.fg});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 12)),
+        ]),
+      );
+}
+
+class _PhaseTile extends StatelessWidget {
+  final EquipmentPhase phase;
+  const _PhaseTile({required this.phase});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final on = cs.onSurface;
+    final color = _phaseColor(phase, cs);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(children: [
+        Icon(Icons.timelapse_rounded, color: color),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            phase.label,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: on.withValues(alpha: 0.95), fontWeight: FontWeight.w600),
+            softWrap: true,
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Color _phaseColor(EquipmentPhase p, ColorScheme cs) {
+    switch (p) {
+      case EquipmentPhase.ingresadaPendienteDiagnostico:
+        return Colors.blue;
+      case EquipmentPhase.diagnosticoReal:
+        return Colors.indigo;
+      case EquipmentPhase.porImportarPorAbonar:
+      case EquipmentPhase.pedirComponentesAbono:
+      case EquipmentPhase.componentesPedidos:
+        return Colors.orange;
+      case EquipmentPhase.enProcesoDeReparacion:
+        return Colors.teal;
+      case EquipmentPhase.reparadaEsperandoPago:
+        return Colors.amber;
+      case EquipmentPhase.terminadaPorEntregarPagada:
+        return Colors.green;
+      case EquipmentPhase.porEnviarAOtraCiudad:
+      case EquipmentPhase.enviadoEsperandoFeedback:
+        return Colors.cyan;
+      case EquipmentPhase.garantia:
+        return Colors.purple;
+      case EquipmentPhase.bodega:
+        return Colors.grey;
+      case EquipmentPhase.devolucion:
+        return Colors.red;
+    }
   }
 }
 

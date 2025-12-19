@@ -13,6 +13,69 @@ enum EquipmentStatus {
   repair,
 }
 
+/// Taller workflow phases for an equipment while it's being serviced.
+enum EquipmentPhase {
+  /// Ingresada al taller (Pendiente de Diagnóstico)
+  ingresadaPendienteDiagnostico,
+  /// DIAGNOSTICO REAL
+  diagnosticoReal,
+  /// POR IMPORTAR (POR ABONAR)
+  porImportarPorAbonar,
+  /// Pedir componentes (Abonó)
+  pedirComponentesAbono,
+  /// COMPONENTES PEDIDOS
+  componentesPedidos,
+  /// En proceso de reparación
+  enProcesoDeReparacion,
+  /// Reparada (Esperando pago)
+  reparadaEsperandoPago,
+  /// Terminada (Por entregar) - (YA PAGÓ)
+  terminadaPorEntregarPagada,
+  /// POR ENVIAR A OTRA CIUDAD
+  porEnviarAOtraCiudad,
+  /// ENVIADO (ESPERANDO FEEDBACK)
+  enviadoEsperandoFeedback,
+  /// Garantía
+  garantia,
+  /// BODEGA
+  bodega,
+  /// DEVOLUCION
+  devolucion,
+}
+
+extension EquipmentPhaseX on EquipmentPhase {
+  String get label {
+    switch (this) {
+      case EquipmentPhase.ingresadaPendienteDiagnostico:
+        return 'Ingresada al taller (Pendiente de Diagnóstico)';
+      case EquipmentPhase.diagnosticoReal:
+        return 'DIAGNÓSTICO REAL';
+      case EquipmentPhase.porImportarPorAbonar:
+        return 'POR IMPORTAR (POR ABONAR)';
+      case EquipmentPhase.pedirComponentesAbono:
+        return 'Pedir componentes (Abonó)';
+      case EquipmentPhase.componentesPedidos:
+        return 'COMPONENTES PEDIDOS';
+      case EquipmentPhase.enProcesoDeReparacion:
+        return 'En proceso de reparación';
+      case EquipmentPhase.reparadaEsperandoPago:
+        return 'Reparada (Esperando pago)';
+      case EquipmentPhase.terminadaPorEntregarPagada:
+        return 'Terminada (Por entregar) - (YA PAGÓ)';
+      case EquipmentPhase.porEnviarAOtraCiudad:
+        return 'POR ENVIAR A OTRA CIUDAD';
+      case EquipmentPhase.enviadoEsperandoFeedback:
+        return 'ENVIADO (ESPERANDO FEEDBACK)';
+      case EquipmentPhase.garantia:
+        return 'Garantía';
+      case EquipmentPhase.bodega:
+        return 'BODEGA';
+      case EquipmentPhase.devolucion:
+        return 'DEVOLUCIÓN';
+    }
+  }
+}
+
 class User {
   final String id;
   final UserRole role;
@@ -55,11 +118,17 @@ class Equipment {
   final String ownerId;
   final String? secondaryOwnerId;
   final String thumbnail;
+  /// Optional primary image (falls back to [thumbnail] if null).
+  final String? mainImage;
   final String details;
   final bool rentalEnabled;
   final List<String> repairHistoryIds; // IDs of repairs
   final List<String> rentalHistoryIds; // IDs of rentals
   final EquipmentStatus status;
+  /// High-granularity workshop phase when in service.
+  final EquipmentPhase phase;
+  /// Product category, e.g., Mixers, Controladores, All-in-one, Audífonos, etc.
+  final String category;
 
   Equipment({
     required this.id,
@@ -69,11 +138,14 @@ class Equipment {
     required this.ownerId,
     this.secondaryOwnerId,
     required this.thumbnail,
+    this.mainImage,
     required this.details,
     this.rentalEnabled = false,
     this.repairHistoryIds = const [],
     this.rentalHistoryIds = const [],
     this.status = EquipmentStatus.available,
+    this.phase = EquipmentPhase.ingresadaPendienteDiagnostico,
+    this.category = 'Sin categoría',
   });
 }
 
