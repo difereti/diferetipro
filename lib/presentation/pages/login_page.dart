@@ -102,8 +102,8 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         if (mounted) {
-          // Determine role from user metadata
-          final role = response.user!.userMetadata?['role'] ?? 'client';
+          // Determine role from user metadata (avoid force unwrap)
+          final role = response.user?.userMetadata?['role'] ?? 'client';
           context.go('/dashboard?role=$role');
         }
       }

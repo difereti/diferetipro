@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../theme.dart';
 import '../../data/mock_data.dart';
 import '../../nav.dart';
@@ -22,6 +23,12 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
+
+  String? _getUserAvatarUrl() {
+    final user = SupabaseService.currentUser;
+    final url = SupabaseService.getAvatarUrlFromUser(user);
+    return (url != null && url.isNotEmpty) ? url : null;
+  }
 
   String _getUserInitials() {
     try {
@@ -61,6 +68,7 @@ class _DashboardPageState extends State<DashboardPage> {
   PreferredSizeWidget? _buildAppBar() {
     if (_currentIndex == 2 && widget.role == 'client') return null; // Hide for emergency page
 
+    final avatarUrl = _getUserAvatarUrl();
     return AppBar(
       title: Text(
         _getTitle(),
@@ -77,7 +85,8 @@ class _DashboardPageState extends State<DashboardPage> {
           borderRadius: BorderRadius.circular(50),
           child: CircleAvatar(
             backgroundColor: Colors.grey[800],
-            child: Text(_getUserInitials()),
+            backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+            child: avatarUrl == null ? Text(_getUserInitials()) : null,
           ),
         ),
         const SizedBox(width: 16),
@@ -206,7 +215,8 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
   late TextEditingController _emailController;
   
   bool _isEditing = false;
-  String _profileImage = 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=200';
+  bool _isUploadingAvatar = false;
+  String _profileImage = '';
   String _phoneCode = '+57';
   
   final user = SupabaseService.currentUser;
@@ -219,6 +229,10 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
     _nameController = TextEditingController(text: metadata['full_name'] ?? '');
     _aliasController = TextEditingController(text: metadata['dj_alias'] ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+
+    // Prefer our stored avatar_url, then provider picture
+    final avatar = (metadata['avatar_url'] ?? metadata['picture'])?.toString();
+    _profileImage = avatar ?? '';
     
     String phone = metadata['phone'] ?? '';
     // Attempt to extract country code if it matches common ones or starts with +
@@ -292,21 +306,17 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
             ListTile(
               leading: const Icon(Icons.camera_alt, color: BrandColors.primary),
               title: const Text('Tomar foto', style: TextStyle(color: Colors.white)),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                setState(() {
-                  _profileImage = 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=200';
-                });
+                await _pickAndUploadAvatar(fromCamera: true);
               },
             ),
             ListTile(
               leading: const Icon(Icons.photo_library, color: BrandColors.primary),
               title: const Text('Elegir de galería', style: TextStyle(color: Colors.white)),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                setState(() {
-                  _profileImage = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200';
-                });
+                await _pickAndUploadAvatar(fromCamera: false);
               },
             ),
           ],
@@ -315,13 +325,55 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
     );
   }
 
+  Future<void> _pickAndUploadAvatar({required bool fromCamera}) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1200,
+      );
+      if (file == null) return;
+
+      setState(() => _isUploadingAvatar = true);
+
+      final bytes = await file.readAsBytes();
+      final contentType = _inferContentType(file.path);
+
+      final url = await SupabaseService.uploadAvatarBytes(bytes: bytes, contentType: contentType);
+
+      if (!mounted) return;
+      setState(() {
+        _profileImage = url;
+        _isUploadingAvatar = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Foto de perfil actualizada')));
+    } catch (e) {
+      debugPrint('Avatar upload failed: $e');
+      if (!mounted) return;
+      setState(() => _isUploadingAvatar = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo actualizar la foto: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  String _inferContentType(String path) {
+    final p = path.toLowerCase();
+    if (p.endsWith('.png')) return 'image/png';
+    if (p.endsWith('.webp')) return 'image/webp';
+    if (p.endsWith('.heic') || p.endsWith('.heif')) return 'image/heic';
+    return 'image/jpeg';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (user == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final metadata = user!.userMetadata ?? {};
+    final metadata = user?.userMetadata ?? {};
     final idType = metadata['id_type'] ?? 'ID';
     final idNumber = metadata['id_number'] ?? 'N/A';
     final role = metadata['role'] ?? 'client';
@@ -354,6 +406,18 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                           : null,
                     ),
                   ),
+                  if (_isUploadingAvatar)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                      ),
+                    ),
                   if (_isEditing)
                   Positioned(
                     bottom: 0,
