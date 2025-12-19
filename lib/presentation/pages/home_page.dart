@@ -27,7 +27,7 @@ class ClientHomePage extends StatelessWidget {
             children: [
               // Welcome Header
               Text(
-                'Hola, $displayName 👋',
+                'Hola, ${displayName.split(' ').first} 👋',
                 style:
                     const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
