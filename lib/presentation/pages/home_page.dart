@@ -330,6 +330,28 @@ class EquipmentDetailsSheet extends StatelessWidget {
                           ?.copyWith(color: on.withValues(alpha: 0.85)),
                     ),
                   ],
+                  const SizedBox(height: 24),
+                  // Button to view repair history (to be wired to Supabase later)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        // TODO: Replace with navigation to repair history for this equipment
+                        // e.g., context.push('/repair-history', extra: equipment)
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Historial de reparaciones: disponible próximamente'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.history_rounded),
+                      label: const Text('Ver historial de reparaciones'),
+                      style: ButtonStyle(
+                        minimumSize:
+                            const MaterialStatePropertyAll(Size(double.infinity, 48)),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
