@@ -66,7 +66,7 @@ class SupabaseService {
 
   /// Upload avatar bytes to Supabase Storage and return a public URL.
   /// It also updates the user's metadata with the `avatar_url` pointing to the public URL.
-  /// Requires an existing bucket named `avatars`. Make the bucket public or add proper RLS.
+  /// Requires an existing bucket named `avatar`. Make the bucket public or add proper RLS.
   static Future<String> uploadAvatarBytes({
     required Uint8List bytes,
     String contentType = 'image/jpeg',
@@ -74,7 +74,7 @@ class SupabaseService {
     final user = currentUser;
     if (user == null) throw Exception('No hay usuario autenticado');
 
-    final bucket = client.storage.from('avatars');
+    final bucket = client.storage.from('avatar');
     final path = 'users/${user.id}/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
     try {
       await bucket.uploadBinary(
