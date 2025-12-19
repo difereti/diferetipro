@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import '../../theme.dart';
@@ -21,6 +22,31 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
+
+  String _getUserInitials() {
+    try {
+      final user = SupabaseService.currentUser;
+      final meta = user?.userMetadata ?? {};
+      final fullNameRaw = meta['full_name']?.toString().trim();
+
+      if (fullNameRaw == null || fullNameRaw.isEmpty) {
+        // Fallback to email first letter if available
+        final email = user?.email ?? '';
+        if (email.isNotEmpty) return email.characters.first.toUpperCase();
+        return 'NM';
+      }
+
+      final parts = fullNameRaw.split(RegExp(r"\s+")).where((p) => p.isNotEmpty).toList();
+      if (parts.isEmpty) return 'NM';
+      final first = parts.first.isNotEmpty ? parts.first[0].toUpperCase() : '';
+      final last = (parts.length > 1 && parts.last.isNotEmpty) ? parts.last[0].toUpperCase() : '';
+      final initials = (first + last).trim();
+      return initials.isEmpty ? 'NM' : initials;
+    } catch (e) {
+      debugPrint('Failed to compute user initials: $e');
+      return 'NM';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +77,7 @@ class _DashboardPageState extends State<DashboardPage> {
           borderRadius: BorderRadius.circular(50),
           child: CircleAvatar(
             backgroundColor: Colors.grey[800],
-            child: const Text('JP'),
+            child: Text(_getUserInitials()),
           ),
         ),
         const SizedBox(width: 16),
