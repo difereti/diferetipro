@@ -294,8 +294,7 @@ class _LoginPageState extends State<LoginPage> {
                                 width: 2,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
+                                  borderRadius: BorderRadius.circular(4)),
                               onChanged: (value) {
                                 setState(() {
                                   _rememberMe = value ?? false;
@@ -374,27 +373,26 @@ class _LoginPageState extends State<LoginPage> {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                          e
-                                              .toString()
-                                              .replaceAll('Exception: ', ''),
-                                        ),
+                                        content: Text(e
+                                            .toString()
+                                            .replaceAll('Exception: ', '')),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
                                   } finally {
-                                    if (mounted) setState(() => _isLoading = false);
+                                    if (mounted)
+                                      setState(() => _isLoading = false);
                                   }
                                 },
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: Theme.of(context).brightness == Brightness.dark
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
                                   ? Colors.grey[700]!
                                   : Colors.grey[300]!,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                                borderRadius: BorderRadius.circular(14)),
                             backgroundColor:
                                 Theme.of(context).brightness == Brightness.dark
                                     ? Colors.black
@@ -405,18 +403,17 @@ class _LoginPageState extends State<LoginPage> {
                                     : Colors.black,
                           ),
                           icon: Icon(
-                            Icons.g_mobiledata, // Minimalist G icon
+                            Icons.g_mobiledata,
                             size: 28,
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white
-                                : Colors.black,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
                           ),
                           label: Text(
                             'Continuar con Google',
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                fontSize: 14, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
@@ -456,63 +453,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 40),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Divider(
-                                color: isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[300]),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'Acceso Demo',
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.grey[600]
-                                    : Colors.grey[400],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Divider(
-                                color: isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[300]),
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _DemoButton(
-                            label: 'Admin',
-                            onTap: () {
-                              _emailController.text = 'admin@difereti.com';
-                              _passwordController.text = 'admin123';
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _DemoButton(
-                            label: 'Técnico',
-                            onTap: () {
-                              _emailController.text = 'tech@difereti.com';
-                              _passwordController.text = 'tech123';
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _DemoButton(
-                            label: 'Cliente',
-                            onTap: () {
-                              _emailController.text = 'cliente@gmail.com';
-                              _passwordController.text = 'cliente123';
-                            },
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
