@@ -14,7 +14,8 @@ class ClientHomePage extends StatelessWidget {
     // Use first name for greeting if no DJ alias
     final firstName = name.split(' ').first;
     final djAlias = user?.userMetadata?['dj_alias'];
-    final displayName = (djAlias != null && djAlias.isNotEmpty) ? djAlias : firstName;
+    final displayName =
+        (djAlias != null && djAlias.isNotEmpty) ? djAlias : firstName;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -24,51 +25,55 @@ class ClientHomePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          // Welcome Header
-          Text(
-            'Hola, $displayName 👋',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 24),
-
-          // Maintenance Reward Card (animated)
-          Builder(builder: (context) {
-            final target = 5;
-            // For now, use mock user stat as a stand-in. When backend is ready,
-            // wire this to the user's completed preventive maintenances delivered.
-            final completed = MockData.currentUser.totalRepairs.clamp(0, target);
-            return MaintenanceProgressCard(completed: completed, target: target);
-          }),
-          const SizedBox(height: 32),
-
-          // My Equipment Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Mis Equipos',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              // Welcome Header
+              Text(
+                'Hola, $displayName 👋',
+                style:
+                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Ver Todo'),
+              const SizedBox(height: 24),
+
+              // Maintenance Reward Card (animated)
+              Builder(builder: (context) {
+                final target = 5;
+                // For now, use mock user stat as a stand-in. When backend is ready,
+                // wire this to the user's completed preventive maintenances delivered.
+                final completed =
+                    MockData.currentUser.totalRepairs.clamp(0, target);
+                return MaintenanceProgressCard(
+                    completed: completed, target: target);
+              }),
+              const SizedBox(height: 32),
+
+              // My Equipment Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Mis Equipos',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text('Ver Todo'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 220,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: MockData.myEquipment.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  itemBuilder: (context, index) {
+                    return _EquipmentCard(
+                        equipment: MockData.myEquipment[index]);
+                  },
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 220,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: MockData.myEquipment.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 16),
-              itemBuilder: (context, index) {
-                return _EquipmentCard(equipment: MockData.myEquipment[index]);
-              },
-            ),
-          ),
-        ],
-      ),
         ),
       ),
     );
@@ -107,7 +112,11 @@ class _EquipmentCard extends StatelessWidget {
               children: [
                 Text(
                   equipment.brand,
-                  style: TextStyle(color: BrandColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: BrandColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -120,6 +129,19 @@ class _EquipmentCard extends StatelessWidget {
                 Row(
                   children: [
                     _StatusBadge(status: equipment.status),
+                    const Spacer(),
+                    Text(
+                      'ID: ${equipment.id}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.7),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ],
@@ -168,7 +190,8 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -180,7 +203,8 @@ class MaintenanceProgressCard extends StatelessWidget {
   final int completed;
   final int target;
 
-  const MaintenanceProgressCard({super.key, required this.completed, required this.target});
+  const MaintenanceProgressCard(
+      {super.key, required this.completed, required this.target});
 
   @override
   Widget build(BuildContext context) {
@@ -211,17 +235,26 @@ class MaintenanceProgressCard extends StatelessWidget {
           Row(children: [
             Icon(Icons.build_rounded, color: on),
             const SizedBox(width: 8),
-            Text('Progreso de mantenimiento', style: TextStyle(color: on, fontWeight: FontWeight.w600)),
+            Text('Progreso de mantenimiento',
+                style: TextStyle(color: on, fontWeight: FontWeight.w600)),
             const Spacer(),
             _DiscountBadge(color: on, textColor: cs.primary),
           ]),
           const SizedBox(height: 14),
           Row(
             children: [
-              Text('$safeCompleted', style: TextStyle(color: on, fontSize: 28, fontWeight: FontWeight.bold)),
-              Text(' de $total', style: TextStyle(color: on.withValues(alpha: 0.9), fontSize: 18, fontWeight: FontWeight.w600)),
+              Text('$safeCompleted',
+                  style: TextStyle(
+                      color: on, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(' de $total',
+                  style: TextStyle(
+                      color: on.withValues(alpha: 0.9),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600)),
               const SizedBox(width: 10),
-              Expanded(child: StepDots(total: total, active: safeCompleted, color: on)),
+              Expanded(
+                  child:
+                      StepDots(total: total, active: safeCompleted, color: on)),
             ],
           ),
           const SizedBox(height: 12),
@@ -262,11 +295,13 @@ class _DiscountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+      decoration:
+          BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
       child: Row(children: [
         Icon(Icons.local_offer_rounded, color: textColor, size: 16),
         const SizedBox(width: 6),
-        Text('50% OFF', style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+        Text('50% OFF',
+            style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
       ]),
     );
   }
@@ -278,7 +313,11 @@ class StepDots extends StatelessWidget {
   final int active;
   final Color color;
 
-  const StepDots({super.key, required this.total, required this.active, required this.color});
+  const StepDots(
+      {super.key,
+      required this.total,
+      required this.active,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
