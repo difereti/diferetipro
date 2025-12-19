@@ -31,64 +31,14 @@ class ClientHomePage extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Gamification Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [BrandColors.primary, BrandColors.primary.withValues(alpha: 0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.stars, color: Colors.white),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Difereti Rewards',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        '3 / 5',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  '¡Estás cerca! 2 mantenimientos más para obtener 50% OFF en tu próximo servicio preventivo.',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: 0.6,
-                    backgroundColor: Colors.black.withValues(alpha: 0.2),
-                    valueColor: const AlwaysStoppedAnimation(Colors.white),
-                    minHeight: 8,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Maintenance Reward Card (animated)
+          Builder(builder: (context) {
+            final target = 5;
+            // For now, use mock user stat as a stand-in. When backend is ready,
+            // wire this to the user's completed preventive maintenances delivered.
+            final completed = MockData.currentUser.totalRepairs.clamp(0, target);
+            return MaintenanceProgressCard(completed: completed, target: target);
+          }),
           const SizedBox(height: 32),
 
           // My Equipment Section
@@ -220,6 +170,134 @@ class _StatusBadge extends StatelessWidget {
         label,
         style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
+    );
+  }
+}
+
+/// A modern, animated card that shows the user's progress toward
+/// earning a 50% discount on the next preventive maintenance.
+class MaintenanceProgressCard extends StatelessWidget {
+  final int completed;
+  final int target;
+
+  const MaintenanceProgressCard({super.key, required this.completed, required this.target});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final on = cs.onPrimary;
+    final total = target <= 0 ? 1 : target;
+    final safeCompleted = completed.clamp(0, total);
+    final percent = safeCompleted / total;
+    final remaining = (total - safeCompleted).clamp(0, total);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            cs.primary,
+            Color.alphaBlend(Colors.black.withValues(alpha: 0.1), cs.primary),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.build_rounded, color: on),
+            const SizedBox(width: 8),
+            Text('Progreso de mantenimiento', style: TextStyle(color: on, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            _DiscountBadge(color: on, textColor: cs.primary),
+          ]),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Text('$safeCompleted', style: TextStyle(color: on, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(' de $total', style: TextStyle(color: on.withValues(alpha: 0.9), fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 10),
+              Expanded(child: StepDots(total: total, active: safeCompleted, color: on)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: percent),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                backgroundColor: Colors.black.withValues(alpha: 0.15),
+                valueColor: AlwaysStoppedAnimation(on),
+                minHeight: 8,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            remaining > 0
+                ? 'Te faltan $remaining mantenimiento${remaining == 1 ? '' : 's'} para obtener 50% OFF en tu próximo preventivo.'
+                : '¡Listo! Ya tienes tu 50% OFF para el próximo mantenimiento preventivo.',
+            style: TextStyle(color: on.withValues(alpha: 0.95), fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiscountBadge extends StatelessWidget {
+  final Color color;
+  final Color textColor;
+
+  const _DiscountBadge({required this.color, required this.textColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+      child: Row(children: [
+        Icon(Icons.local_offer_rounded, color: textColor, size: 16),
+        const SizedBox(width: 6),
+        Text('50% OFF', style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
+}
+
+/// Small step indicator dots representing completed vs target maintenances.
+class StepDots extends StatelessWidget {
+  final int total;
+  final int active;
+  final Color color;
+
+  const StepDots({super.key, required this.total, required this.active, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final count = total <= 0 ? 1 : total;
+    final act = active.clamp(0, count);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: List.generate(count, (i) {
+        final isOn = i < act;
+        return Container(
+          width: 8,
+          height: 8,
+          margin: EdgeInsets.only(left: i == 0 ? 0 : 6),
+          decoration: BoxDecoration(
+            color: isOn ? color : color.withValues(alpha: 0.25),
+            shape: BoxShape.circle,
+          ),
+        );
+      }),
     );
   }
 }
