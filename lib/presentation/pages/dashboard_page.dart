@@ -231,11 +231,19 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
   late TextEditingController _aliasController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
+  // Address controllers
+  late TextEditingController _addressLine1Controller;
+  late TextEditingController _addressLine2Controller;
+  late TextEditingController _cityController;
+  late TextEditingController _stateController;
+  late TextEditingController _postalCodeController;
+  late TextEditingController _countryController;
   
   bool _isEditing = false;
   bool _isUploadingAvatar = false;
   String _profileImage = '';
   String _phoneCode = '+57';
+  int _tabIndex = 0; // 0: Información, 1: Dirección
   
   final user = SupabaseService.currentUser;
 
@@ -247,6 +255,13 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
     _nameController = TextEditingController(text: metadata['full_name'] ?? '');
     _aliasController = TextEditingController(text: metadata['dj_alias'] ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+    // Address
+    _addressLine1Controller = TextEditingController(text: metadata['address_line1'] ?? '');
+    _addressLine2Controller = TextEditingController(text: metadata['address_line2'] ?? '');
+    _cityController = TextEditingController(text: metadata['city'] ?? '');
+    _stateController = TextEditingController(text: metadata['state'] ?? '');
+    _postalCodeController = TextEditingController(text: metadata['postal_code'] ?? '');
+    _countryController = TextEditingController(text: metadata['country'] ?? '');
 
     // Prefer our stored avatar_url, then provider picture
     final avatar = (metadata['avatar_url'] ?? metadata['picture'])?.toString();
@@ -267,6 +282,12 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
     _aliasController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _addressLine1Controller.dispose();
+    _addressLine2Controller.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _postalCodeController.dispose();
+    _countryController.dispose();
     super.dispose();
   }
 
@@ -282,6 +303,13 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
         'full_name': _nameController.text.trim(),
         'dj_alias': _aliasController.text.trim(),
         'phone': '$_phoneCode${_phoneController.text.trim()}',
+        // Address
+        'address_line1': _addressLine1Controller.text.trim(),
+        'address_line2': _addressLine2Controller.text.trim(),
+        'city': _cityController.text.trim(),
+        'state': _stateController.text.trim(),
+        'postal_code': _postalCodeController.text.trim(),
+        'country': _countryController.text.trim(),
       };
 
       // Update metadata
@@ -535,76 +563,208 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
                 ),
               ],
               
-              const SizedBox(height: 24),
+              // Tabs: Información / Dirección
+              DefaultTabController(
+                length: 2,
+                initialIndex: _tabIndex,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TabBar(
+                      onTap: (i) => setState(() => _tabIndex = i),
+                      indicatorColor: BrandColors.primary,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.grey,
+                      tabs: const [
+                        Tab(icon: Icon(Icons.info_outline), text: 'Información'),
+                        Tab(icon: Icon(Icons.location_on_outlined), text: 'Dirección'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
               
-              // 1. ID Document (Read-Only)
-              _buildReadOnlyRow(Icons.badge_outlined, '$idType $idNumber', 'Documento de Identidad'),
-              
-              const SizedBox(height: 16),
-              
-              // 2. Phone (Editable)
-              if (_isEditing) ...[
-                 Row(
-                   children: [
-                     Container(
-                       decoration: BoxDecoration(
-                         border: Border(bottom: BorderSide(color: Colors.grey[700]!)),
-                       ),
-                       child: CountryCodePicker(
-                         onChanged: (code) => _phoneCode = code.dialCode ?? '+57',
-                         initialSelection: 'CO',
-                         favorite: const ['+57', 'CO'],
-                         showCountryOnly: false,
-                         showOnlyCountryWhenClosed: false,
-                         alignLeft: false,
-                         textStyle: const TextStyle(color: Colors.white),
-                         dialogTextStyle: const TextStyle(color: Colors.black),
-                         searchDecoration: const InputDecoration(
-                           prefixIcon: Icon(Icons.search),
-                           hintText: 'Buscar país',
-                         ),
-                       ),
-                     ),
-                     const SizedBox(width: 8),
-                     Expanded(
-                       child: TextField(
-                         controller: _phoneController,
-                         keyboardType: TextInputType.phone,
-                         style: const TextStyle(color: Colors.white),
-                         decoration: const InputDecoration(
-                           labelText: 'Celular',
-                           labelStyle: TextStyle(color: Colors.grey),
-                           enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                           focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
-                         ),
-                       ),
-                     ),
-                   ],
-                 ),
-              ] else ...[
-                 _buildReadOnlyRow(Icons.phone_outlined, '$_phoneCode ${_phoneController.text}', 'Celular'),
-              ],
-              
-              const SizedBox(height: 16),
-
-              // 3. Email (Editable)
-              if (_isEditing)
-                TextField(
-                   controller: _emailController,
-                   keyboardType: TextInputType.emailAddress,
-                   style: const TextStyle(color: Colors.white),
-                   decoration: const InputDecoration(
-                     labelText: 'Correo Electrónico',
-                     labelStyle: TextStyle(color: Colors.grey),
-                     prefixIcon: Icon(Icons.email_outlined, color: Colors.grey),
-                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
-                   ),
-                )
-              else
-                _buildReadOnlyRow(Icons.email_outlined, _emailController.text, 'Correo Electrónico'),
-
-              const SizedBox(height: 32),
+              // Tab content
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _tabIndex == 0
+                    ? Column(
+                        key: const ValueKey('info-tab'),
+                        children: [
+                          // 1. ID Document (Read-Only)
+                          _buildReadOnlyRow(Icons.badge_outlined, '$idType $idNumber', 'Documento de Identidad'),
+                          const SizedBox(height: 16),
+                          // 2. Phone (Editable)
+                          if (_isEditing) ...[
+                            Row(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(bottom: BorderSide(color: Colors.grey[700]!)),
+                                  ),
+                                  child: CountryCodePicker(
+                                    onChanged: (code) => _phoneCode = code.dialCode ?? '+57',
+                                    initialSelection: 'CO',
+                                    favorite: const ['+57', 'CO'],
+                                    showCountryOnly: false,
+                                    showOnlyCountryWhenClosed: false,
+                                    alignLeft: false,
+                                    textStyle: const TextStyle(color: Colors.white),
+                                    dialogTextStyle: const TextStyle(color: Colors.black),
+                                    searchDecoration: const InputDecoration(
+                                      prefixIcon: Icon(Icons.search),
+                                      hintText: 'Buscar país',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Celular',
+                                      labelStyle: TextStyle(color: Colors.grey),
+                                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            _buildReadOnlyRow(Icons.phone_outlined, '$_phoneCode ${_phoneController.text}', 'Celular'),
+                          ],
+                          const SizedBox(height: 16),
+                          // 3. Email (Editable)
+                          if (_isEditing)
+                            TextField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Correo Electrónico',
+                                labelStyle: TextStyle(color: Colors.grey),
+                                prefixIcon: Icon(Icons.email_outlined, color: Colors.grey),
+                                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                              ),
+                            )
+                          else
+                            _buildReadOnlyRow(Icons.email_outlined, _emailController.text, 'Correo Electrónico'),
+                          const SizedBox(height: 32),
+                        ],
+                      )
+                    : Column(
+                        key: const ValueKey('address-tab'),
+                        children: [
+                          if (_isEditing) ...[
+                            TextField(
+                              controller: _addressLine1Controller,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Dirección',
+                                labelStyle: TextStyle(color: Colors.grey),
+                                prefixIcon: Icon(Icons.location_on_outlined, color: Colors.grey),
+                                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _addressLine2Controller,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Complemento (Apto, Interior, etc.)',
+                                labelStyle: TextStyle(color: Colors.grey),
+                                prefixIcon: Icon(Icons.home_work_outlined, color: Colors.grey),
+                                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _cityController,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Ciudad',
+                                      labelStyle: TextStyle(color: Colors.grey),
+                                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _stateController,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Departamento/Estado',
+                                      labelStyle: TextStyle(color: Colors.grey),
+                                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _postalCodeController,
+                                    keyboardType: TextInputType.streetAddress,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Código Postal',
+                                      labelStyle: TextStyle(color: Colors.grey),
+                                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _countryController,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      labelText: 'País',
+                                      labelStyle: TextStyle(color: Colors.grey),
+                                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: BrandColors.primary)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            _buildReadOnlyRow(Icons.location_on_outlined, _addressLine1Controller.text.isEmpty
+                                ? 'No especificado'
+                                : _addressLine1Controller.text, 'Dirección'),
+                            const SizedBox(height: 12),
+                            if (_addressLine2Controller.text.isNotEmpty)
+                              _buildReadOnlyRow(Icons.home_work_outlined, _addressLine2Controller.text, 'Complemento'),
+                            const SizedBox(height: 12),
+                            _buildReadOnlyRow(Icons.location_city_outlined, _cityController.text.isEmpty ? 'No especificado' : _cityController.text, 'Ciudad'),
+                            const SizedBox(height: 12),
+                            _buildReadOnlyRow(Icons.map_outlined, _stateController.text.isEmpty ? 'No especificado' : _stateController.text, 'Departamento/Estado'),
+                            const SizedBox(height: 12),
+                            _buildReadOnlyRow(Icons.local_post_office_outlined, _postalCodeController.text.isEmpty ? 'No especificado' : _postalCodeController.text, 'Código Postal'),
+                            const SizedBox(height: 12),
+                            _buildReadOnlyRow(Icons.flag_outlined, _countryController.text.isEmpty ? 'No especificado' : _countryController.text, 'País'),
+                            const SizedBox(height: 32),
+                          ],
+                        ],
+                      ),
+              ),
               
               // Action Buttons
               if (_isEditing)
@@ -698,7 +858,19 @@ class _UserProfileDialogState extends State<UserProfileDialog> {
             ),
           ),
           if (label == 'Documento de Identidad')
-             const Icon(Icons.lock_outline, color: Colors.grey, size: 16), 
+             Column(
+               children: [
+                 const Icon(Icons.lock_outline, color: Colors.grey, size: 16),
+                 if (text.isEmpty)
+                   Padding(
+                     padding: const EdgeInsets.only(top: 4.0),
+                     child: Text(
+                       'Requerido',
+                       style: TextStyle(color: Colors.red[400], fontSize: 9),
+                     ),
+                   ),
+               ],
+             ),
         ],
       ),
     );
