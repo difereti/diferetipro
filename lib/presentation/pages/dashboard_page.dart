@@ -182,10 +182,28 @@ class _DashboardPageState extends State<DashboardPage> {
       onDestinationSelected: (index) {
         setState(() => _currentIndex = index);
       },
-      destinations: items.map((item) => NavigationDestination(
-        icon: item.icon,
-        label: item.label!,
-      )).toList(),
+      destinations: [
+        NavigationDestination(
+          icon: Icon(Icons.home),
+          label: 'Inicio',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.build),
+          label: 'Reparaciones',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.sos),
+          label: 'SOS',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.speaker_group),
+          label: 'Alquiler',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.menu),
+          label: 'Opciones',
+        ),
+      ],
     );
   }
 

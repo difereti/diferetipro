@@ -263,7 +263,19 @@ class EquipmentDetailsSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  // Category chip positioned below image and above brand
+                  Center(
+                    child: _Chip(
+                      icon: Icons.category_rounded,
+                      label: equipment.category.isNotEmpty
+                          ? equipment.category
+                          : 'Sin categoría',
+                      bg: cs.primary.withValues(alpha: 0.12),
+                      fg: cs.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Center(
                     child: Column(
                       children: [
@@ -285,19 +297,11 @@ class EquipmentDetailsSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
                     children: [
-                      _Chip(
-                        icon: Icons.category_rounded,
-                        label: equipment.category.isNotEmpty
-                            ? equipment.category
-                            : 'Sin categoría',
-                        bg: cs.primary.withValues(alpha: 0.12),
-                        fg: cs.primary,
-                      ),
                       _Chip(
                         icon: Icons.tag_rounded,
                         label: 'ID: ${equipment.id}',
@@ -340,15 +344,16 @@ class EquipmentDetailsSheet extends StatelessWidget {
                         // e.g., context.push('/repair-history', extra: equipment)
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Historial de reparaciones: disponible próximamente'),
+                            content: Text(
+                                'Historial de reparaciones: disponible próximamente'),
                           ),
                         );
                       },
                       icon: const Icon(Icons.history_rounded),
                       label: const Text('Ver historial de reparaciones'),
                       style: ButtonStyle(
-                        minimumSize:
-                            const MaterialStatePropertyAll(Size(double.infinity, 48)),
+                        minimumSize: const MaterialStatePropertyAll(
+                            Size(double.infinity, 48)),
                       ),
                     ),
                   ),
@@ -367,15 +372,22 @@ class _Chip extends StatelessWidget {
   final String label;
   final Color bg;
   final Color fg;
-  const _Chip({required this.icon, required this.label, required this.bg, required this.fg});
+  const _Chip(
+      {required this.icon,
+      required this.label,
+      required this.bg,
+      required this.fg});
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 14, color: fg),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 12)),
+          Text(label,
+              style: TextStyle(
+                  color: fg, fontWeight: FontWeight.w600, fontSize: 12)),
         ]),
       );
 }
@@ -402,10 +414,8 @@ class _PhaseTile extends StatelessWidget {
         Expanded(
           child: Text(
             phase.label,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: on.withValues(alpha: 0.95), fontWeight: FontWeight.w600),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: on.withValues(alpha: 0.95), fontWeight: FontWeight.w600),
             softWrap: true,
           ),
         ),
