@@ -61,55 +61,11 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: _buildAppBar(),
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNav(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Opciones de Emergencia'),
-                content: SingleChildScrollView(
-                  child: ListBody(
-                    children: <Widget>[
-                      ElevatedButton(
-                        child: const Text('Videollamada de Emergencia'),
-                        onPressed: () {
-                            // Cerrar el diálogo y cambiar a la pestaña de emergencia (S.O.S)
-                            setState(() => _currentIndex = 2);
-                            context.pop();
-                        },
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: ElevatedButton(
-                          child: const Text('Visita Técnica'),
-                          onPressed: () {
-                              // Funcionalidad futura
-                              context.pop();
-                              if (mounted) {
-                                ScaffoldMessenger.of(this.context).showSnackBar(
-                                  const SnackBar(content: Text('Próximamente')),
-                                );
-                              }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-        child: const Icon(Icons.add),
-        tooltip: 'SOS',
-      ),
+      floatingActionButton: _buildFab(),
     );
   }
 
   PreferredSizeWidget? _buildAppBar() {
-    if (_currentIndex == 2 && widget.role == 'client') return null; // Hide for emergency page
-
     final avatarUrl = _getUserAvatarUrl();
     return AppBar(
       title: Text(
@@ -163,8 +119,10 @@ class _DashboardPageState extends State<DashboardPage> {
     // Client
     switch (_currentIndex) {
       case 0: return 'Inicio';
-      case 1: return 'Servicios';
-      case 2: return 'Emergencia';
+      case 1: return 'Reparaciones';
+      case 2: return 'Tienda';
+      case 3: return 'Alquiler';
+      case 4: return 'Opciones';
       default: return 'Difereti';
     }
   }
@@ -190,7 +148,31 @@ class _DashboardPageState extends State<DashboardPage> {
     switch (_currentIndex) {
       case 0: return const ClientHomePage();
       case 1: return const ServicesPage();
-      case 2: return const EmergencyPage();
+      case 2: return const Center(child: Text('Tienda'));
+      case 3: return const Center(child: Text('Alquiler'));
+      case 4:
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            ListTile(
+              leading: const Icon(Icons.sos, color: Colors.redAccent),
+              title: const Text('S.O.S'),
+              subtitle: const Text('Videollamada de emergencia'),
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  useSafeArea: true,
+                  isScrollControlled: true,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  builder: (ctx) => const SizedBox(
+                    height: double.infinity,
+                    child: EmergencyPage(),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
       default: return const ClientHomePage();
     }
   }
@@ -234,8 +216,8 @@ class _DashboardPageState extends State<DashboardPage> {
           label: 'Reparaciones',
         ),
         NavigationDestination(
-          icon: Icon(Icons.sos),
-          label: 'SOS',
+          icon: Icon(Icons.storefront),
+          label: 'Tienda',
         ),
         NavigationDestination(
           icon: Icon(Icons.speaker_group),
