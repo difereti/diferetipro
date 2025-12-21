@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme.dart';
 import 'package:difereti/data/supabase_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart' as geocoding;
+import 'package:difereti/data/country_data.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -19,10 +23,13 @@ class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _countryController = TextEditingController();
   
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _locatingCountry = false;
+  String? _countryCode; // ISO 3166-1 alpha-2
   
   String _selectedIdType = 'Cedula';
   final List<String> _idTypes = ['Cedula', 'NIT', 'Pasaporte'];
@@ -42,6 +49,8 @@ class _RegisterPageState extends State<RegisterPage> {
           'id_type': _selectedIdType,
           'id_number': _idNumberController.text.trim(),
           'phone': _phoneController.text.trim(),
+          'country': _countryController.text.trim(),
+          'country_code': _countryCode,
           'role': 'client', // Default role
         },
       );
@@ -84,6 +93,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _countryController.dispose();
     super.dispose();
   }
 
@@ -236,6 +246,22 @@ class _RegisterPageState extends State<RegisterPage> {
                             return 'Por favor ingresa tu celular';
                           }
                           return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 3.1 Country (auto-detect + autocomplete)
+                      _CountryAutocompleteField(
+                        controller: _countryController,
+                        isDark: isDark,
+                        countryCode: _countryCode,
+                        locating: _locatingCountry,
+                        onDetect: _detectCountry,
+                        onCountrySelected: (country) {
+                          setState(() {
+                            _countryController.text = country.name;
+                            _countryCode = country.code;
+                          });
                         },
                       ),
                       const SizedBox(height: 16),
@@ -397,6 +423,180 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Try to auto-detect country once when opening the screen
+    WidgetsBinding.instance.addPostFrameCallback((_) => _detectCountry(silent: true));
+  }
+
+  Future<void> _detectCountry({bool silent = false}) async {
+    setState(() => _locatingCountry = true);
+    try {
+      // Check permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (!silent && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Permiso de ubicación denegado. Ingresa el país manualmente.')),
+          );
+        }
+        return;
+      }
+
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!isServiceEnabled) {
+        if (!silent && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Activa la ubicación para detectar tu país.')),
+          );
+        }
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
+      final placemarks = await geocoding.placemarkFromCoordinates(position.latitude, position.longitude);
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final isoCode = place.isoCountryCode ?? '';
+        final name = place.country ?? '';
+        if (isoCode.isNotEmpty && name.isNotEmpty) {
+          setState(() {
+            _countryCode = isoCode.toUpperCase();
+            _countryController.text = name;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Country detection failed: $e');
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo detectar el país automáticamente.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _locatingCountry = false);
+    }
+  }
+}
+
+class _CountryAutocompleteField extends StatefulWidget {
+  final TextEditingController controller;
+  final bool isDark;
+  final String? countryCode;
+  final bool locating;
+  final VoidCallback? onDetect;
+  final ValueChanged<Country> onCountrySelected;
+
+  const _CountryAutocompleteField({
+    required this.controller,
+    required this.isDark,
+    required this.countryCode,
+    required this.locating,
+    required this.onDetect,
+    required this.onCountrySelected,
+  });
+
+  @override
+  State<_CountryAutocompleteField> createState() => _CountryAutocompleteFieldState();
+}
+
+class _CountryAutocompleteFieldState extends State<_CountryAutocompleteField> {
+  late List<Country> _options;
+
+  @override
+  void initState() {
+    super.initState();
+    _options = countries;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final flag = widget.countryCode != null ? countryFlag(widget.countryCode!) : null;
+
+    return RawAutocomplete<Country>(
+      textEditingController: widget.controller,
+      focusNode: FocusNode(),
+      optionsBuilder: (TextEditingValue value) {
+        final query = value.text.trim().toLowerCase();
+        if (query.isEmpty) return const Iterable<Country>.empty();
+        return _options.where((c) => c.name.toLowerCase().contains(query) || c.code.toLowerCase().startsWith(query));
+      },
+      displayStringForOption: (Country option) => option.name,
+      onSelected: widget.onCountrySelected,
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          decoration: InputDecoration(
+            labelText: 'País',
+            prefixIcon: SizedBox(
+              width: 44,
+              child: Center(
+                child: Text(
+                  flag ?? '🌍',
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
+            suffixIcon: widget.locating
+                ? Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: BrandColors.primary,
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    tooltip: 'Detectar automáticamente',
+                    icon: Icon(Icons.my_location_outlined, color: BrandColors.primary),
+                    onPressed: widget.onDetect,
+                  ),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) return 'Ingresa tu país';
+            return null;
+          },
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            elevation: 4,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240, minWidth: 300),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final Country option = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    leading: Text(countryFlag(option.code), style: const TextStyle(fontSize: 18)),
+                    title: Text(option.name, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                    subtitle: Text(option.code, style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700])),
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

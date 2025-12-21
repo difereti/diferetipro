@@ -49,5 +49,7 @@
     <string>Necesitamos acceso a tu galería para actualizar tu foto de perfil.</string>
     <key>NSCameraUsageDescription</key>
     <string>Necesitamos acceso a la cámara para tomar una foto de perfil.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Usamos tu ubicación para detectar automáticamente tu país de registro.</string>
 </dict>
 </plist>
