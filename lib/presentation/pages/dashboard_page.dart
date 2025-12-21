@@ -61,7 +61,49 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: _buildAppBar(),
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNav(),
-      floatingActionButton: _buildFab(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Opciones de Emergencia'),
+                content: SingleChildScrollView(
+                  child: ListBody(
+                    children: <Widget>[
+                      ElevatedButton(
+                        child: const Text('Videollamada de Emergencia'),
+                        onPressed: () {
+                            // Cerrar el diálogo y cambiar a la pestaña de emergencia (S.O.S)
+                            setState(() => _currentIndex = 2);
+                            context.pop();
+                        },
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: ElevatedButton(
+                          child: const Text('Visita Técnica'),
+                          onPressed: () {
+                              // Funcionalidad futura
+                              context.pop();
+                              if (mounted) {
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  const SnackBar(content: Text('Próximamente')),
+                                );
+                              }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add),
+        tooltip: 'SOS',
+      ),
     );
   }
 
