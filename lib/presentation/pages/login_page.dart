@@ -6,6 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../theme.dart';
 import 'package:difereti/data/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart' as geocoding;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -431,7 +433,44 @@ class _LoginPageState extends State<LoginPage> {
                       SizedBox(
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () => context.go('/register'),
+                          onPressed: () async {
+                            // Prefetch user location to prefill country on Register page
+                            try {
+                              LocationPermission permission = await Geolocator.checkPermission();
+                              if (permission == LocationPermission.denied) {
+                                permission = await Geolocator.requestPermission();
+                              }
+                              if (permission == LocationPermission.deniedForever) {
+                                if (mounted) context.go('/register');
+                                return;
+                              }
+
+                              final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+                              if (!serviceEnabled) {
+                                if (mounted) context.go('/register');
+                                return;
+                              }
+
+                              final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
+                              final placemarks = await geocoding.placemarkFromCoordinates(position.latitude, position.longitude);
+                              if (placemarks.isNotEmpty) {
+                                final place = placemarks.first;
+                                final iso = (place.isoCountryCode ?? '').toUpperCase();
+                                final country = place.country ?? '';
+                                if (iso.isNotEmpty && country.isNotEmpty) {
+                                  final uri = Uri(path: '/register', queryParameters: {
+                                    'iso': iso,
+                                    'country': country,
+                                  });
+                                  if (mounted) context.go(uri.toString());
+                                  return;
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint('Prefetch country failed: $e');
+                            }
+                            if (mounted) context.go('/register');
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
                             foregroundColor: BrandColors.primary,

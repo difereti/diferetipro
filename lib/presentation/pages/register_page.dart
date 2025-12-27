@@ -9,7 +9,9 @@ import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:difereti/data/country_data.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+  final String? initialCountryCode;
+  final String? initialCountryName;
+  const RegisterPage({super.key, this.initialCountryCode, this.initialCountryName});
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -232,37 +234,65 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      // 3. Phone Field
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                        decoration: InputDecoration(
-                          labelText: 'Celular',
-                          prefixIcon: Icon(Icons.phone_outlined, color: BrandColors.primary),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor ingresa tu celular';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // 3.1 Country (auto-detect + autocomplete)
-                      _CountryAutocompleteField(
-                        controller: _countryController,
-                        isDark: isDark,
-                        countryCode: _countryCode,
-                        locating: _locatingCountry,
-                        onDetect: _detectCountry,
-                        onCountrySelected: (country) {
-                          setState(() {
-                            _countryController.text = country.name;
-                            _countryCode = country.code;
-                          });
-                        },
+                      // 3. Country + Phone Row
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Country selector (compact) on the left
+                          SizedBox(
+                            width: 180,
+                            child: _CountryAutocompleteField(
+                              controller: _countryController,
+                              isDark: isDark,
+                              countryCode: _countryCode,
+                              locating: _locatingCountry,
+                              onDetect: _detectCountry,
+                              onCountrySelected: (country) {
+                                setState(() {
+                                  _countryController.text = country.name;
+                                  _countryCode = country.code;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Phone number on the right with dial code prefix
+                          Expanded(
+                            child: TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                              decoration: InputDecoration(
+                                labelText: 'Celular',
+                                prefixIcon: (_countryCode != null && _countryCode!.isNotEmpty)
+                                    ? SizedBox(
+                                        width: 80,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              countryFlag(_countryCode!),
+                                              style: const TextStyle(fontSize: 16),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              dialCodeFor(_countryCode!).isNotEmpty ? dialCodeFor(_countryCode!) : '+',
+                                              style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : Icon(Icons.phone_outlined, color: BrandColors.primary),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Por favor ingresa tu celular';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
 
@@ -429,8 +459,14 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void initState() {
     super.initState();
-    // Try to auto-detect country once when opening the screen
-    WidgetsBinding.instance.addPostFrameCallback((_) => _detectCountry(silent: true));
+    // Prefill from navigation params if available, otherwise try auto-detect once
+    if ((widget.initialCountryCode != null && widget.initialCountryCode!.isNotEmpty) &&
+        (widget.initialCountryName != null && widget.initialCountryName!.isNotEmpty)) {
+      _countryCode = widget.initialCountryCode!.toUpperCase();
+      _countryController.text = widget.initialCountryName!;
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _detectCountry(silent: true));
+    }
   }
 
   Future<void> _detectCountry({bool silent = false}) async {
@@ -542,7 +578,7 @@ class _CountryAutocompleteFieldState extends State<_CountryAutocompleteField> {
               width: 44,
               child: Center(
                 child: Text(
-                  flag ?? '🌍',
+                  flag ?? '🌐',
                   style: const TextStyle(fontSize: 18),
                 ),
               ),

@@ -19,7 +19,10 @@ class AppRouter {
         path: AppRoutes.register,
         name: 'register',
         pageBuilder: (context, state) => NoTransitionPage(
-          child: const RegisterPage(),
+          child: RegisterPage(
+            initialCountryCode: state.uri.queryParameters['iso'],
+            initialCountryName: state.uri.queryParameters['country'],
+          ),
         ),
       ),
       GoRoute(
